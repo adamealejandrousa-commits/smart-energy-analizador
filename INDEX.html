@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Energy Consulting — Analizador de Calidad de Energía</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --azul:     #1a4b8c;
+    --azulMed:  #2563c7;
+    --azulClr:  #dbeafe;
+    --verde:    #166534;
+    --verdeClr: #dcfce7;
+    --rojo:     #991b1b;
+    --rojoClr:  #fee2e2;
+    --ambar:    #92400e;
+    --ambarClr: #fef3c7;
+    --gris:     #f8fafc;
+    --border:   #e2e8f0;
+    --text:     #0f172a;
+    --textMed:  #475569;
+    --textLow:  #94a3b8;
+    --bg:       #f1f5f9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* ── HEADER ── */
+  .header { background: var(--azul); color: #fff; padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; height: 56px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  .header-logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 20px; height: 20px; }
+  .header-title { font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+  .header-sub { font-size: 11px; color: #93c5fd; margin-top: 1px; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  .hbtn { padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1.5px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12); color: #fff; transition: all .15s; }
+  .hbtn:hover { background: rgba(255,255,255,.22); }
+  .hbtn.primary { background: #2563c7; border-color: #3b82f6; }
+  .hbtn.success { background: #16a34a; border-color: #22c55e; }
+
+  /* ── LAYOUT ── */
+  .layout { display: flex; height: calc(100vh - 56px); overflow: hidden; }
+
+  /* ── SIDEBAR ── */
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-section { padding: 10px 8px 4px; font-size: 10px; font-weight: 600; color: var(--textLow); text-transform: uppercase; letter-spacing: .06em; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 12px; margin: 1px 6px; border-radius: 7px; cursor: pointer; font-size: 13px; color: var(--textMed); transition: all .12s; }
+  .nav-item:hover { background: var(--azulClr); color: var(--azulMed); }
+  .nav-item.act { background: var(--azulClr); color: var(--azul); font-weight: 600; }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-badge { margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; }
+  .nb-ok   { background: var(--verdeClr); color: var(--verde); }
+  .nb-fail { background: var(--rojoClr);  color: var(--rojo);  }
+  .nb-warn { background: var(--ambarClr); color: var(--ambar); }
+  .sidebar-footer { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); font-size: 11px; color: var(--textLow); text-align: center; }
+
+  /* ── MAIN ── */
+  .main { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; }
+
+  /* ── CARDS ── */
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; margin-bottom: 12px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--textMed); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 10px; display: flex; align-items: center; gap: 7px; }
+  .card-title svg { width: 14px; height: 14px; }
+
+  /* ── GRID ── */
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .g4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+
+  /* ── FORM ── */
+  label { font-size: 11px; color: var(--textMed); display: block; margin-bottom: 3px; font-weight: 500; }
+  input, select { width: 100%; padding: 7px 9px; font-size: 13px; border: 1px solid var(--border); border-radius: 7px; background: #fff; color: var(--text); transition: border-color .15s; }
+  input:focus, select:focus { border-color: var(--azulMed); outline: none; box-shadow: 0 0 0 3px rgba(37,99,199,.1); }
+  .field { margin-bottom: 8px; }
+
+  /* ── KPI ── */
+  .kpi { background: var(--gris); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+  .kpi-val { font-size: 22px; font-weight: 700; color: var(--text); }
+  .kpi-lbl { font-size: 11px; color: var(--textLow); margin-top: 3px; }
+
+  /* ── BADGE ── */
+  .badge { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 9px; font-weight: 600; }
+  .b-ok   { background: var(--verdeClr); color: var(--verde); }
+  .b-warn { background: var(--ambarClr); color: var(--ambar); }
+  .b-fail { background: var(--rojoClr);  color: var(--rojo);  }
+  .b-na   { background: #f1f5f9; color: var(--textMed); border: 1px solid var(--border); }
+
+  /* ── TABLE ── */
+  .rt { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .rt th { text-align: left; padding: 7px 10px; font-size: 10px; font-weight: 600; color: var(--textLow); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); background: var(--gris); }
+  .rt td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .rt tr:last-child td { border-bottom: none; }
+  .rt tr:hover td { background: #f8fafc; }
+
+  /* ── DROPZONE ── */
+  .drop { border: 2px dashed var(--border); border-radius: 10px; padding: 2rem; text-align: center; cursor: pointer; transition: all .15s; margin-bottom: 12px; }
+  .drop:hover, .drop.over { border-color: var(--azulMed); background: var(--azulClr); }
+  .drop-icon { width: 40px; height: 40px; margin: 0 auto 10px; color: var(--textLow); }
+  .drop-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .drop-sub { font-size: 12px; color: var(--textLow); }
+
+  /* ── BUTTONS ── */
+  .btn { padding: 8px 16px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; background: #fff; color: var(--text); transition: all .15s; }
+  .btn:hover { background: var(--gris); }
+  .btn-p { background: var(--azulMed); color: #fff; border-color: var(--azulMed); }
+  .btn-p:hover { background: var(--azul); }
+  .btn-g { background: #16a34a; color: #fff; border-color: #16a34a; }
+  .btn-g:hover { background: var(--verde); }
+  .btn-full { width: 100%; margin-top: 8px; padding: 10px; font-size: 14px; }
+
+  /* ── STATUS BANNER ── */
+  .status-banner { border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+  .sb-ok   { background: var(--verdeClr); border: 1px solid #86efac; }
+  .sb-warn { background: var(--ambarClr); border: 1px solid #fcd34d; }
+  .sb-fail { background: var(--rojoClr);  border: 1px solid #fca5a5; }
+  .sb-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
+  .sb-title { font-size: 14px; font-weight: 700; }
+  .sb-sub   { font-size: 12px; margin-top: 2px; opacity: .8; }
+
+  /* ── NORM SECTION ── */
+  .norm-block { margin-bottom: 14px; }
+  .norm-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--gris); border-radius: 7px; margin-bottom: 6px; }
+  .norm-name { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  /* ── REC ROW ── */
+  .rec-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+  .rec-row:last-child { border-bottom: none; }
+  .rec-num { width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .rn-ok   { background: var(--verdeClr); color: var(--verde); }
+  .rn-warn { background: var(--ambarClr); color: var(--ambar); }
+  .rn-fail { background: var(--rojoClr);  color: var(--rojo);  }
+  .rec-text { flex: 1; font-size: 13px; line-height: 1.5; }
+  .rec-norm { font-size: 11px; color: var(--textLow); margin-top: 3px; }
+
+  /* ── CFE BOX ── */
+  .cfe-box { background: var(--rojoClr); border: 1px solid #fca5a5; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .cfe-box.ok { background: var(--verdeClr); border-color: #86efac; }
+  .cfe-amount { font-size: 32px; font-weight: 700; }
+  .cfe-amount.ok { color: var(--verde); }
+  .cfe-amount.fail { color: var(--rojo); }
+
+  /* ── MONO BLOCK ── */
+  .mono { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 12px 14px; font-family: 'Consolas', 'Courier New', monospace; font-size: 11.5px; line-height: 1.9; margin-bottom: 10px; overflow-x: auto; }
+  .mono .ok   { color: #86efac; }
+  .mono .fail { color: #fca5a5; }
+  .mono .warn { color: #fde68a; }
+  .mono .dim  { color: #64748b; }
+  .mono .key  { color: #93c5fd; }
+
+  /* ── CANVAS ── */
+  .chart-wrap { position: relative; height: 160px; margin: 8px 0; }
+
+  /* ── PANE ── */
+  .pane { display: none; }
+  .pane.act { display: block; }
+
+  /* ── PAGE TITLE ── */
+  .page-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .page-sub { font-size: 12px; color: var(--textLow); margin-bottom: 16px; }
+
+  /* ── CHIP ── */
+  .chip { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 8px; background: var(--azulClr); color: var(--azul); font-weight: 600; margin: 2px; }
+
+  /* ── PROGRESS BAR ── */
+  .pbar-bg { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .pbar-f  { height: 6px; border-radius: 3px; transition: width .5s; }
+
+  /* ── DISTRIBUTION CARDS ── */
+  .dist-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: #fff; }
+  .dist-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  .dist-card p  { font-size: 12px; color: var(--textMed); line-height: 1.6; margin-bottom: 8px; }
+  .dist-step { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 7px; font-size: 12px; color: var(--textMed); line-height: 1.5; }
+  .step-num  { width: 20px; height: 20px; border-radius: 50%; background: var(--azulMed); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+
+  @media (max-width: 700px) {
+    .sidebar { display: none; }
+    .g2, .g3, .g4 { grid-template-columns: 1fr; }
+    .header-sub { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 20 20" fill="none" stroke="#1a4b8c" stroke-width="1.8">
+        <path d="M3 10 L8 4 L11 8 L14 2 L17 10" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 15 L17 15" stroke-linecap="round" opacity=".4"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">Smart Energy Consulting Corp</div>
+      <div class="header-sub">Analizador de Calidad de Energía v2.0 — IEEE 519 · IEEE 1159 · ANSI C84.1 · NOM-001 · Código de Red</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="hbtn" onclick="loadDemo()">Demo SESAJAL</button>
+    <button class="hbtn primary" onclick="runAnalysis()">Analizar →</button>
+    <button class="hbtn success" onclick="exportReport()">Exportar reporte</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Entrada</div>
+    <div class="nav-item act" onclick="go('entrada')" id="nav-entrada">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8h6M8 5v6"/></svg>
+      Datos y mediciones
+    </div>
+    <div class="nav-item" onclick="go('normas')" id="nav-normas">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4h10M3 8h7M3 12h5"/></svg>
+      Normas y límites
+    </div>
+
+    <div class="sidebar-section">Análisis</div>
+    <div class="nav-item" onclick="go('resultados')" id="nav-resultados">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12L5 8l3 3 3-5 3 2"/></svg>
+      Resultados
+      <span class="nav-badge" id="nb-resultados"></span>
+    </div>
+    <div class="nav-item" onclick="go('graficas')" id="nav-graficas">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="9" width="3" height="5" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg>
+      Gráficas de tendencia
+    </div>
+    <div class="nav-item" onclick="go('cfe')" id="nav-cfe">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+      Penalización CFE / ROI
+      <span class="nav-badge" id="nb-cfe"></span>
+    </div>
+
+    <div class="sidebar-section">Documentos</div>
+    <div class="nav-item" onclick="go('memoria')" id="nav-memoria">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="2" width="10" height="12" rx="2"/><path d="M6 6h4M6 9h3"/></svg>
+      Memoria de cálculo
+    </div>
+    <div class="nav-item" onclick="go('reporte')" id="nav-reporte">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h7l3 3v9H3z"/><path d="M10 2v3h3"/><path d="M6 7h4M6 10h3"/></svg>
+      Reporte ejecutivo
+    </div>
+
+    <div class="sidebar-section">Sistema</div>
+    <div class="nav-item" onclick="go('distribucion')" id="nav-distribucion">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="4" cy="8" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="12" cy="12" r="2"/><path d="M6 8h2M10 5l-2 2M10 11l-2-2"/></svg>
+      Distribución del equipo
+    </div>
+
+    <div class="sidebar-footer">
+      Smart Energy Consulting Corp<br>Florida · México · 2026
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ═══ ENTRADA ═══ -->
+    <div class="pane act" id="pane-entrada">
+      <div class="page-title">Datos de medición</div>
+      <div class="page-sub">Ingresa los datos manualmente o arrastra tu CSV del analizador de red</div>
+
+      <div class="drop" id="dropzone" onclick="document.getElementById('fileInput').click()" ondragover="evDrag(event)" ondrop="evDrop(event)">
+        <div class="drop-icon">
+          <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="8" width="32" height="26" rx="4"/><path d="M15 22h10M20 17v10"/></svg>
+        </div>
+        <div class="drop-title">Arrastra tu archivo CSV aquí</div>
+        <div class="drop-sub">Fluke 435/437 · Hioki PQ3100/3198 · Dranetz HDPQ · ION 7400 · Elspec · PowerSight · .csv o .txt</div>
+        <input type="file" id="fileInput" accept=".csv,.txt" style="display:none" onchange="loadCSVFile(this.files[0])">
+      </div>
+
+      <div class="g2">
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="12" height="12" rx="2"/><path d="M4 4h6M4 7h4M4 10h3"/></svg>
+            Datos del cliente y visita
+          </div>
+          <div class="g2">
+            <div class="field"><label>Empresa / cliente</label><input id="f-emp" value=""></div>
+            <div class="field"><label>Planta / ubicación</label><input id="f-planta" value=""></div>
+            <div class="field"><label>Fecha de medición</label><input type="date" id="f-fecha"></div>
+            <div class="field"><label>Técnico responsable</label><input id="f-tec" value="Smart Energy Consulting Corp"></div>
+            <div class="field"><label>Equipo de medición</label><input id="f-equipo" value=""></div>
+            <div class="field"><label>Duración medición (h)</label><input type="number" id="f-dur" value="360"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M7 4v3l2 2"/></svg>
+            Parámetros del sistema eléctrico
+          </div>
+          <div class="g2">
+            <div class="field"><label>Tensión nominal (kV)</label>
+              <select id="f-vnom" onchange="autoLimits()">
+                <option value="0.22">0.22 kV (220V)</option><option value="0.48">0.48 kV (480V)</option>
+                <option value="13.8">13.8 kV</option><option value="23" selected>23 kV</option>
+                <option value="34.5">34.5 kV</option><option value="69">69 kV</option>
+              </select>
+            </div>
+            <div class="field"><label>Demanda contratada (kW)</label><input type="number" id="f-dem" value="410" oninput="autoLimits()"></div>
+            <div class="field"><label>Tarifa CFE</label>
+              <select id="f-tarifa"><option value="OM">OM</option><option value="HM" selected>HM</option><option value="HS">HS</option><option value="HT">HT</option></select>
+            </div>
+            <div class="field"><label>No. medidor CFE</label><input id="f-med" value=""></div>
+            <div class="field"><label>Corriente CC — Icc (kA)</label><input type="number" id="f-icc" value="5.036" step="0.001"></div>
+            <div class="field"><label>Corriente max demanda IL (kA)</label><input type="number" id="f-il" value="0.0106" step="0.0001"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10L5 6l3 3 3-5 1 1"/></svg>
+          Mediciones registradas (promedio del período)
+        </div>
+        <div class="g3">
+          <div class="field"><label>Va promedio (kV)</label><input type="number" id="m-va" value="" step="0.001"></div>
+          <div class="field"><label>Vb promedio (kV)</label><input type="number" id="m-vb" value="" step="0.001"></div>
+          <div class="field"><label>Vc promedio (kV)</label><input type="number" id="m-vc" value="" step="0.001"></div>
+          <div class="field"><label>V máximo registrado (kV)</label><input type="number" id="m-vmax" value="" step="0.001"></div>
+          <div class="field"><label>V mínimo registrado (kV)</label><input type="number" id="m-vmin" value="" step="0.001"></div>
+          <div class="field"><label>Frecuencia promedio (Hz)</label><input type="number" id="m-freq" value="" step="0.01"></div>
+          <div class="field"><label>Frecuencia máxima (Hz)</label><input type="number" id="m-fmax" value="" step="0.01"></div>
+          <div class="field"><label>Frecuencia mínima (Hz)</label><input type="number" id="m-fmin" value="" step="0.01"></div>
+          <div class="field"><label>Factor de potencia promedio (%)</label><input type="number" id="m-fp" value="" step="0.1"></div>
+          <div class="field"><label>FP máximo (%)</label><input type="number" id="m-fpmax" value="" step="0.1"></div>
+          <div class="field"><label>FP mínimo (%)</label><input type="number" id="m-fpmin" value="" step="0.1"></div>
+          <div class="field"><label>THD-V máximo (%)</label><input type="number" id="m-thdv" value="" step="0.1"></div>
+          <div class="field"><label>TDD corriente máximo (%)</label><input type="number" id="m-thdi" value="" step="0.1"></div>
+          <div class="field"><label>Desbalance voltaje máx (%)</label><input type="number" id="m-dbv" value="" step="0.01"></div>
+          <div class="field"><label>Desbalance corriente máx (%)</label><input type="number" id="m-dbi" value="" step="0.01"></div>
+          <div class="field"><label>Sags registrados (#)</label><input type="number" id="m-sags" value="0"></div>
+          <div class="field"><label>Swells registrados (#)</label><input type="number" id="m-swells" value="0"></div>
+          <div class="field"><label>kW demanda máxima</label><input type="number" id="m-kwmax" value=""></div>
+          <div class="field"><label>Consumo mensual (kWh)</label><input type="number" id="m-kwh" value=""></div>
+          <div class="field"><label>kVAR máximo registrado</label><input type="number" id="m-kvar" value=""></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-p btn-full" onclick="runAnalysis()">Ejecutar análisis completo →</button>
+          <button class="btn btn-full" onclick="loadDemo()" style="flex:.4">Cargar demo SESAJAL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ NORMAS ═══ -->
+    <div class="pane" id="pane-normas">
+      <div class="page-title">Normas y límites</div>
+      <div class="page-sub">Todos los parámetros son editables para adaptarse a cada cliente y contrato CFE</div>
+      <div class="g2">
+        <div class="card">
+          <div class="card-title">ANSI C84.1 — Voltaje</div>
+          <div class="g2">
+            <div class="field"><label>Límite inferior permanente (%)</label><input type="number" id="n-vmin" value="-5" step="0.5"></div>
+            <div class="field"><label>Límite superior permanente (%)</label><input type="number" id="n-vmax" value="5" step="0.5"></div>
+            <div class="field"><label>Límite temporal mínimo (%)</label><input type="number" id="n-vtmin" value="-10" step="0.5"></div>
+            <div class="field"><label>Límite temporal máximo (%)</label><input type="number" id="n-vtmax" value="10" step="0.5"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">NOM-001-SEDE / Código de Red</div>
+          <div class="g2">
+            <div class="field"><label>Desbalance voltaje máx (%)</label><input type="number" id="n-dbv" value="7.5" step="0.5"></div>
+            <div class="field"><label>Desbalance corriente máx (%)</label><input type="number" id="n-dbi" value="7.5" step="0.5"></div>
+            <div class="field"><label>FP mínimo CFE (%)</label><input type="number" id="n-fp" value="90" step="1"></div>
+            <div class="field"><label>FP mínimo Cód. Red (%)</label><input type="number" id="n-fpcr" value="95" step="1"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">IEEE 519-2022 — Armónicos</div>
+          <div class="g2">
+            <div class="field"><label>THD-V máximo (%)</label><input type="number" id="n-thdv" value="5" step="0.1"></div>
+            <div class="field"><label>TDD máximo — Icc/IL 100–1000 (%)</label><input type="number" id="n-thdi" value="15" step="0.5"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">IEEE 1159-2019 — Frecuencia</div>
+          <div class="g2">
+            <div class="field"><label>Frec. mín. permanente (Hz)</label><input type="number" id="n-fmin" value="59.5" step="0.1"></div>
+            <div class="field"><label>Frec. máx. permanente (Hz)</label><input type="number" id="n-fmax" value="60.5" step="0.1"></div>
+            <div class="field"><label>Frec. mín. temporal 30 min (Hz)</label><input type="number" id="n-ftmin" value="58.5" step="0.1"></div>
+            <div class="field"><label>Frec. máx. temporal 30 min (Hz)</label><input type="number" id="n-ftmax" value="61.5" step="0.1"></div>
+          </div>
+        </div>
+      </div>
+      <div style="background:var(--azulClr);border:1px solid #93c5fd;border-radius:8px;padding:12px 14px;font-size:12px;color:#1e40af;line-height:1.7">
+        <strong>Nota:</strong> Los límites predeterminados corresponden a instalaciones industriales en México bajo las normas vigentes. Para instalaciones especiales, tensiones diferentes o contratos CFE con condiciones particulares, ajusta los valores antes de ejecutar el análisis.
+      </div>
+    </div>
+
+    <!-- ═══ RESULTADOS ═══ -->
+    <div class="pane" id="pane-resultados">
+      <div id="res-empty" style="text-align:center;padding:3rem;color:var(--textLow)">Carga datos y ejecuta el análisis para ver resultados.</div>
+      <div id="res-content" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+          <div>
+            <div class="page-title" id="r-title">—</div>
+            <div class="page-sub" id="r-sub">—</div>
+          </div>
+          <div id="r-global-badge"></div>
+        </div>
+        <div id="r-status-banner"></div>
+        <div class="g4" id="r-kpis"></div>
+        <div class="g2">
+          <div class="card"><div class="card-title">Voltaje</div><table class="rt"><thead><tr><th>Parámetro</th><th>Medido</th><th>Desviación</th><th>Estado</th></tr></thead><tbody id="r-v"></tbody></table></div>
+          <div class="card"><div class="card-title">Frecuencia</div><table class="rt"><thead><tr><th>Parámetro</th><th>Medido</th><th>Límite</th><th>Estado</th></tr></thead><tbody id="r-f"></tbody></table></div>
+        </div>
+        <div class="g2">
+          <div class="card"><div class="card-title">Armónicos — IEEE 519</div><table class="rt"><thead><tr><th>Parámetro</th><th>Medido</th><th>Límite</th><th>Estado</th></tr></thead><tbody id="r-thd"></tbody></table></div>
+          <div class="card"><div class="card-title">Factor de potencia y desbalance</div><table class="rt"><thead><tr><th>Parámetro</th><th>Medido</th><th>Límite</th><th>Estado</th></tr></thead><tbody id="r-fp"></tbody></table></div>
+        </div>
+        <div class="card"><div class="card-title">Evaluación por norma</div><div id="r-normas"></div></div>
+      </div>
+    </div>
+
+    <!-- ═══ GRAFICAS ═══ -->
+    <div class="pane" id="pane-graficas">
+      <div id="graf-empty" style="text-align:center;padding:3rem;color:var(--textLow)">Ejecuta el análisis para ver gráficas.</div>
+      <div id="graf-content" style="display:none">
+        <div class="page-title">Gráficas de tendencia — período de medición</div>
+        <div class="page-sub" id="graf-sub">Datos del período analizado</div>
+        <div class="g2">
+          <div class="card"><div class="card-title">Voltaje por fase (kV)</div><div class="chart-wrap"><canvas id="ch-v"></canvas></div></div>
+          <div class="card"><div class="card-title">Frecuencia (Hz)</div><div class="chart-wrap"><canvas id="ch-f"></canvas></div></div>
+        </div>
+        <div class="g2">
+          <div class="card"><div class="card-title">TDD de corriente (%)</div><div class="chart-wrap"><canvas id="ch-thd"></canvas></div></div>
+          <div class="card"><div class="card-title">Factor de potencia (%)</div><div class="chart-wrap"><canvas id="ch-fp"></canvas></div></div>
+        </div>
+        <div class="card"><div class="card-title">Perfil de demanda (kW / kVAR)</div><div style="height:150px"><canvas id="ch-dem"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ═══ CFE ═══ -->
+    <div class="pane" id="pane-cfe">
+      <div id="cfe-empty" style="text-align:center;padding:3rem;color:var(--textLow)">Ejecuta el análisis para calcular penalización CFE.</div>
+      <div id="cfe-content" style="display:none">
+        <div class="page-title">Penalización CFE y ROI banco de capacitores</div>
+        <div class="page-sub">Cálculo conforme a tarifas CFE vigentes</div>
+        <div class="g2">
+          <div>
+            <div class="cfe-box" id="cfe-box">
+              <div style="font-size:12px;font-weight:600;margin-bottom:6px" id="cfe-title-lbl">Penalización por bajo FP</div>
+              <div class="cfe-amount" id="cfe-amount">$ 0</div>
+              <div style="font-size:12px;margin-top:4px;opacity:.8" id="cfe-sub-lbl">por mes estimado</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Parámetros tarifarios (editables)</div>
+              <div class="field"><label>Cargo kVAR excedente ($/kVAR-mes)</label><input type="number" id="cfe-ckvar" value="58.50" step="0.5" oninput="calcCFE()"></div>
+              <div class="field"><label>Cargo energía ($/kWh)</label><input type="number" id="cfe-ckwh" value="2.85" step="0.01" oninput="calcCFE()"></div>
+              <div class="field"><label>FP objetivo CFE (%)</label><input type="number" id="cfe-fpo" value="90" step="1" oninput="calcCFE()"></div>
+              <div class="field"><label>Consumo mensual (kWh)</label><input type="number" id="cfe-kwh" value="" oninput="calcCFE()"></div>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:10px">
+              <div class="card-title">Desglose del cálculo</div>
+              <div id="cfe-desglose" style="font-size:13px;line-height:2.1;color:var(--text)"></div>
+            </div>
+            <div class="card">
+              <div class="card-title">ROI — Banco de capacitores</div>
+              <table class="rt"><tbody id="cfe-roi"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MEMORIA ═══ -->
+    <div class="pane" id="pane-memoria">
+      <div id="mem-empty" style="text-align:center;padding:3rem;color:var(--textLow)">Ejecuta el análisis para generar la memoria de cálculo.</div>
+      <div id="mem-content" style="display:none">
+        <div class="page-title">Memoria de cálculo técnica</div>
+        <div class="page-sub">Fórmulas y valores calculados — lista para incluir en el reporte formal</div>
+        <div style="margin-bottom:12px">
+          <span class="chip">ANSI C84.1</span><span class="chip">NOM-001-SEDE</span><span class="chip">IEEE 519-2022</span><span class="chip">IEEE 1159-2019</span><span class="chip">Código de Red CRE</span>
+        </div>
+        <div id="mem-blocks"></div>
+      </div>
+    </div>
+
+    <!-- ═══ REPORTE ═══ -->
+    <div class="pane" id="pane-reporte">
+      <div id="rep-empty" style="text-align:center;padding:3rem;color:var(--textLow)">Ejecuta el análisis para generar el reporte.</div>
+      <div id="rep-content" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div>
+            <div class="page-title">Reporte ejecutivo de calidad de energía</div>
+            <div class="page-sub">Conforme a IEEE 519 · IEEE 1159 · ANSI C84.1 · NOM-001 · Código de Red</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-p" onclick="printReport()">Imprimir / PDF</button>
+            <button class="btn btn-g" onclick="exportReport()">Exportar Word</button>
+          </div>
+        </div>
+        <div id="rep-body"></div>
+      </div>
+    </div>
+
+    <!-- ═══ DISTRIBUCIÓN ═══ -->
+    <div class="pane" id="pane-distribucion">
+      <div class="page-title">Estrategia de distribución del sistema</div>
+      <div class="page-sub">Cómo llevar esta herramienta a tu equipo de trabajo — 4 perfiles, 3 modalidades</div>
+
+      <div class="g2" style="margin-bottom:14px">
+        <div class="dist-card" style="border-left:4px solid #16a34a">
+          <h3>✓ Opción 1 — Archivo HTML standalone (HOY)</h3>
+          <p>Este archivo <strong>SmartEnergyConsulting_Analizador.html</strong> funciona sin internet, sin instalación, en cualquier PC, tablet o laptop. Solo necesitas un navegador web moderno (Chrome, Edge, Firefox).</p>
+          <div class="dist-step"><div class="step-num">1</div><div>Descarga el archivo HTML desde esta conversación</div></div>
+          <div class="dist-step"><div class="step-num">2</div><div>Compártelo por WhatsApp, email o USB a tu equipo</div></div>
+          <div class="dist-step"><div class="step-num">3</div><div>El ingeniero lo abre en su tablet en campo — funciona sin señal</div></div>
+          <div class="dist-step"><div class="step-num">4</div><div>Carga el CSV del analizador y genera el reporte en minutos</div></div>
+          <div style="background:var(--verdeClr);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--verde);font-weight:600;margin-top:8px">✓ LISTO — puedes distribuirlo hoy mismo · 0 costo de infraestructura</div>
+        </div>
+
+        <div class="dist-card" style="border-left:4px solid #2563c7">
+          <h3>☁ Opción 2 — App web en la nube (1–2 semanas)</h3>
+          <p>Sube el HTML a un servidor web y tu equipo accede con una URL propia. Cualquier dispositivo, siempre actualizado, sin distribuir archivos.</p>
+          <div class="dist-step"><div class="step-num">1</div><div>Sube el archivo a <strong>Netlify</strong> (gratuito) o <strong>GitHub Pages</strong></div></div>
+          <div class="dist-step"><div class="step-num">2</div><div>Obtén una URL tipo <code>smartenergy.netlify.app</code></div></div>
+          <div class="dist-step"><div class="step-num">3</div><div>Comparte la URL con tu equipo — acceso inmediato</div></div>
+          <div class="dist-step"><div class="step-num">4</div><div>Cuando actualices la herramienta, todos la tienen actualizada automáticamente</div></div>
+          <div style="background:var(--azulClr);border-radius:6px;padding:8px 10px;font-size:11px;color:#1e40af;font-weight:600;margin-top:8px">Costo: $0/mes en Netlify gratuito · Dominio propio: ~$12/año</div>
+        </div>
+
+        <div class="dist-card" style="border-left:4px solid #9333ea">
+          <h3>🌐 Opción 3 — Integrado en smartenergyconsulting.com</h3>
+          <p>El sistema vive dentro de tu sitio web profesional. Los clientes acceden a un portal con login, historial de reportes y tu branding completo.</p>
+          <div class="dist-step"><div class="step-num">1</div><div>Claude construye el portal web completo con tu marca</div></div>
+          <div class="dist-step"><div class="step-num">2</div><div>Sistema de login por cliente (cada uno ve solo sus proyectos)</div></div>
+          <div class="dist-step"><div class="step-num">3</div><div>Base de datos de proyectos históricos y comparativas</div></div>
+          <div class="dist-step"><div class="step-num">4</div><div>Los clientes reciben el reporte directo en su portal — diferenciador premium</div></div>
+          <div style="background:#f3e8ff;border-radius:6px;padding:8px 10px;font-size:11px;color:#7c3aed;font-weight:600;margin-top:8px">Costo: ~$20–50/mes (hosting + BD) · Tiempo de desarrollo: 2–3 semanas con Claude</div>
+        </div>
+
+        <div class="dist-card" style="border-left:4px solid #ea580c">
+          <h3>📱 Roles por perfil de usuario</h3>
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">👷 Ingeniero de campo</div>
+            <div style="font-size:12px;color:var(--textMed)">Usa el HTML offline en tablet. Módulos: Levantamiento + carga CSV. Genera JSON maestro al terminar la visita.</div>
+          </div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">📊 Analista de oficina</div>
+            <div style="font-size:12px;color:var(--textMed)">Recibe JSON + CSV. Ejecuta análisis, verifica normas, genera reporte Word y calcula penalización CFE.</div>
+          </div>
+          <div style="margin-bottom:10px">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">🎯 Director (tú)</div>
+            <div style="font-size:12px;color:var(--textMed)">Revisa reporte ejecutivo, aprueba y firma. Dashboard con métricas de todos los proyectos activos.</div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px">🏭 Cliente</div>
+            <div style="font-size:12px;color:var(--textMed)">Recibe el reporte Word/PDF final por email o en portal. Solo ve semáforos, penalización CFE y 3 acciones concretas.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:linear-gradient(135deg,#1a4b8c,#2563c7);border:none">
+        <div style="color:#fff;font-size:14px;font-weight:700;margin-bottom:8px">Próximos pasos recomendados</div>
+        <div class="g3">
+          <div style="background:rgba(255,255,255,.12);border-radius:8px;padding:12px;color:#e0f2fe">
+            <div style="font-weight:700;margin-bottom:4px;font-size:13px">Esta semana</div>
+            <div style="font-size:12px;line-height:1.7">Descarga el HTML y pruébalo con datos reales de un cliente. Compártelo con tu equipo de campo por WhatsApp.</div>
+          </div>
+          <div style="background:rgba(255,255,255,.12);border-radius:8px;padding:12px;color:#e0f2fe">
+            <div style="font-weight:700;margin-bottom:4px;font-size:13px">Este mes</div>
+            <div style="font-size:12px;line-height:1.7">Sube a Netlify y obtén tu URL. Construye el dashboard maestro unificado con historial de clientes.</div>
+          </div>
+          <div style="background:rgba(255,255,255,.12);border-radius:8px;padding:12px;color:#e0f2fe">
+            <div style="font-weight:700;margin-bottom:4px;font-size:13px">En 60 días</div>
+            <div style="font-size:12px;line-height:1.7">Portal web con login por cliente, base de datos de proyectos y cotización automática integrada al reporte.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+var RES={}, CH={};
+
+function go(id){
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('act'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('act'));
+  document.getElementById('pane-'+id).classList.add('act');
+  document.getElementById('nav-'+id).classList.add('act');
+}
+
+function gv(id){return parseFloat(document.getElementById(id).value)||0;}
+function gs(id){return document.getElementById(id).value||'';}
+function sv(id,v){document.getElementById(id).value=v;}
+
+function evDrag(e){e.preventDefault();}
+function evDrop(e){
+  e.preventDefault();
+  if(e.dataTransfer.files[0])loadCSVFile(e.dataTransfer.files[0]);
+}
+
+function loadCSVFile(f){
+  var r=new FileReader();
+  r.onload=function(e){
+    var lines=e.target.result.trim().split('\n');
+    var hdrs=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/[^a-z0-9_]/g,''));
+    var rows=lines.slice(1).map(l=>{var v=l.split(',');var o={};hdrs.forEach((h,i)=>o[h]=(v[i]||'').trim());return o;});
+    function avg(col){var vs=rows.map(r=>parseFloat(r[col])).filter(x=>!isNaN(x));return vs.length?vs.reduce((a,b)=>a+b)/vs.length:null;}
+    function mx(col){var vs=rows.map(r=>parseFloat(r[col])).filter(x=>!isNaN(x));return vs.length?Math.max(...vs):null;}
+    function mn(col){var vs=rows.map(r=>parseFloat(r[col])).filter(x=>!isNaN(x));return vs.length?Math.min(...vs):null;}
+    var map={va:'m-va',vb:'m-vb',vc:'m-vc',fp:'m-fp',freq:'m-freq',thd_va:'m-thdv',thd_ia:'m-thdi'};
+    Object.keys(map).forEach(k=>{var v=avg(k);if(v!==null)sv(map[k],v.toFixed(3));});
+    var vmx=mx('va');if(vmx)sv('m-vmax',vmx.toFixed(3));
+    var vmn=mn('va');if(vmn)sv('m-vmin',vmn.toFixed(3));
+    var fmx=mx('freq');if(fmx)sv('m-fmax',fmx.toFixed(3));
+    var fmn=mn('freq');if(fmn)sv('m-fmin',fmn.toFixed(3));
+    document.getElementById('dropzone').style.background='var(--verdeClr)';
+    document.getElementById('dropzone').querySelector('.drop-title').textContent='✓ CSV cargado: '+rows.length+' registros';
+    document.getElementById('dropzone').querySelector('.drop-sub').textContent=f.name+' · '+hdrs.length+' columnas detectadas';
+  };
+  r.readAsText(f);
+}
+
+function autoLimits(){
+  var vnom=gv('f-vnom'), dem=gv('f-dem');
+  sv('n-thdv', vnom>=69?3:5);
+  sv('n-fpcr', dem>=1000?95:90);
+}
+
+function badge(s){
+  if(s==='OK')  return '<span class="badge b-ok">CUMPLE</span>';
+  if(s==='WARN')return '<span class="badge b-warn">MARGINAL</span>';
+  if(s==='NA')  return '<span class="badge b-na">NO APLICA</span>';
+  return '<span class="badge b-fail">NO CUMPLE</span>';
+}
+
+function runAnalysis(){
+  var vnom=gv('f-vnom');
+  var va=gv('m-va'),vb=gv('m-vb'),vc=gv('m-vc');
+  var vmax=gv('m-vmax'),vmin=gv('m-vmin');
+  var freq=gv('m-freq'),fmax=gv('m-fmax'),fmin=gv('m-fmin');
+  var fp=gv('m-fp'),fpmax=gv('m-fpmax'),fpmin=gv('m-fpmin');
+  var thdv=gv('m-thdv'),thdi=gv('m-thdi');
+  var dbv=gv('m-dbv'),dbi=gv('m-dbi');
+  var sags=gv('m-sags'),swells=gv('m-swells');
+  var kwmax=gv('m-kwmax'),kwh=gv('m-kwh'),kvar=gv('m-kvar');
+  var icc=gv('f-icc'),il=gv('f-il');
+  var iccIl=il>0?Math.round(icc/il):0;
+  var dem=gv('f-dem');
+
+  var nVmax=gv('n-vmax'),nVtmax=Math.abs(gv('n-vtmax'));
+  var nDbv=gv('n-dbv'),nDbi=gv('n-dbi');
+  var nFp=gv('n-fp'),nFpcr=gv('n-fpcr');
+  var nThdv=gv('n-thdv'),nThdi=gv('n-thdi');
+  var nFmin=gv('n-fmin'),nFmax=gv('n-fmax');
+  var nFtmin=gv('n-ftmin'),nFtmax=gv('n-ftmax');
+
+  var devA=(va-vnom)/vnom*100, devB=(vb-vnom)/vnom*100, devC=(vc-vnom)/vnom*100;
+  var devMax=(vmax-vnom)/vnom*100, devMin=(vmin-vnom)/vnom*100;
+
+  var vSt=d=>Math.abs(d)<=nVmax?'OK':Math.abs(d)<=nVtmax?'WARN':'FAIL';
+  var fSt=(v,lo,hi)=>v>=lo&&v<=hi?'OK':'FAIL';
+  var fpSt=v=>v>=nFp?'OK':v>=nFp-5?'WARN':'FAIL';
+  var dbSt=(v,l)=>v<=l?'OK':v<=l*1.3?'WARN':'FAIL';
+  var tSt=(v,l,isNA)=>isNA?'NA':v<=l?'OK':v<=l*1.2?'WARN':'FAIL';
+
+  var stVA=vSt(devA),stVB=vSt(devB),stVC=vSt(devC);
+  var stVMax=vSt(devMax),stVMin=vSt(devMin);
+  var stFreq=fSt(freq,nFmin,nFmax);
+  var stFMax=fSt(fmax,nFtmin,nFtmax),stFMin=fSt(fmin,nFtmin,nFtmax);
+  var stFP=fpSt(fp);
+  var stDbv=dbSt(dbv,nDbv),stDbi=dbSt(dbi,nDbi);
+  var stThdv=tSt(thdv,nThdv,false);
+  var stThdi=tSt(thdi,nThdi,dem<1000);
+
+  var allSt=[stVA,stVB,stVC,stFreq,stFP,stDbv,stDbi,stThdv];
+  var fails=allSt.filter(s=>s==='FAIL').length;
+  var warns=allSt.filter(s=>s==='WARN').length;
+  var oks=allSt.filter(s=>s==='OK').length;
+  var score=Math.round(oks/allSt.length*100);
+  var gst=fails>0?'FAIL':warns>0?'WARN':'OK';
+
+  RES={vnom,va,vb,vc,vmax,vmin,freq,fmax,fmin,fp,fpmax,fpmin,thdv,thdi,dbv,dbi,sags,swells,kwmax,kwh,kvar,icc,il,iccIl,dem,devA,devB,devC,devMax,devMin,stVA,stVB,stVC,stVMax,stVMin,stFreq,stFMax,stFMin,stFP,stDbv,stDbi,stThdv,stThdi,score,gst,fails,warns,oks,nVmax,nDbv,nDbi,nFp,nFpcr,nThdv,nThdi,nFmin,nFmax,nFtmin,nFtmax};
+
+  renderResultados(); renderGraficas(); renderCFE(); renderMemoria(); renderReporte();
+  // Update nav badges
+  var nb=document.getElementById('nb-resultados');
+  nb.textContent=gst==='OK'?'✓ OK':gst==='WARN'?fails+' !':(fails+' ✗');
+  nb.className='nav-badge '+(gst==='OK'?'nb-ok':gst==='WARN'?'nb-warn':'nb-fail');
+  var nc=document.getElementById('nb-cfe');
+  if(fp>0&&fp<nFp){nc.textContent='!';nc.className='nav-badge nb-fail';}else{nc.textContent='';nc.className='';}
+  go('resultados');
+}
+
+function renderResultados(){
+  var R=RES;
+  document.getElementById('res-empty').style.display='none';
+  document.getElementById('res-content').style.display='block';
+  document.getElementById('r-title').textContent=(gs('f-emp')||'—')+' — '+(gs('f-planta')||'—');
+  document.getElementById('r-sub').textContent=gs('f-fecha')+' | '+gs('f-tec')+' | '+gs('f-equipo');
+
+  var stColors={OK:'var(--verde)',WARN:'var(--ambar)',FAIL:'var(--rojo)'};
+  var stBg={OK:'sb-ok',WARN:'sb-warn',FAIL:'sb-fail'};
+  var stIcon={OK:'✓',WARN:'⚠',FAIL:'✗'};
+  var stMsg={OK:'Sistema CUMPLE con todas las normas evaluadas','WARN':'Cumplimiento MARGINAL — se requiere atención','FAIL':'Sistema NO CUMPLE — acción correctiva requerida'};
+  document.getElementById('r-status-banner').innerHTML=`<div class="status-banner ${stBg[R.gst]}"><div class="sb-icon" style="background:${stColors[R.gst]};color:#fff;font-size:18px">${stIcon[R.gst]}</div><div><div class="sb-title" style="color:${stColors[R.gst]}">${stMsg[R.gst]}</div><div class="sb-sub" style="color:${stColors[R.gst]}">Índice de cumplimiento: ${R.score}% | ${R.oks}/${R.oks+R.warns+R.fails} parámetros dentro de norma</div></div></div>`;
+
+  document.getElementById('r-kpis').innerHTML=
+    `<div class="kpi"><div class="kpi-val">${R.score}%</div><div class="kpi-lbl">Índice de cumplimiento</div></div>`+
+    `<div class="kpi"><div class="kpi-val" style="color:${R.fails>0?'var(--rojo)':'var(--verde)'}">${R.fails}</div><div class="kpi-lbl">Parámetros fuera de norma</div></div>`+
+    `<div class="kpi"><div class="kpi-val">${R.fp.toFixed(1)}%</div><div class="kpi-lbl">FP promedio</div></div>`+
+    `<div class="kpi"><div class="kpi-val">${R.dbv.toFixed(2)}%</div><div class="kpi-lbl">Desbalance V máx</div></div>`;
+
+  document.getElementById('r-v').innerHTML=
+    ['A','B','C'].map((f,i)=>{var d=[R.devA,R.devB,R.devC][i],v=[R.va,R.vb,R.vc][i],st=[R.stVA,R.stVB,R.stVC][i];return `<tr><td>V fase ${f}</td><td>${v.toFixed(3)} kV</td><td style="color:${d>=0?'var(--verde)':'var(--rojo)'}">${d>=0?'+':''}${d.toFixed(2)}%</td><td>${badge(st)}</td></tr>`}).join('')+
+    `<tr><td>V máx reg.</td><td>${R.vmax.toFixed(3)} kV</td><td>${(R.devMax>=0?'+':'')+R.devMax.toFixed(2)}%</td><td>${badge(R.stVMax)}</td></tr>`+
+    `<tr><td>V mín reg.</td><td>${R.vmin.toFixed(3)} kV</td><td>${(R.devMin>=0?'+':'')+R.devMin.toFixed(2)}%</td><td>${badge(R.stVMin)}</td></tr>`;
+
+  document.getElementById('r-f').innerHTML=
+    `<tr><td>Frecuencia promedio</td><td>${R.freq.toFixed(3)} Hz</td><td>${R.nFmin}–${R.nFmax} Hz</td><td>${badge(R.stFreq)}</td></tr>`+
+    `<tr><td>Frecuencia máxima</td><td>${R.fmax.toFixed(3)} Hz</td><td>${R.nFtmin}–${R.nFtmax} Hz</td><td>${badge(R.stFMax)}</td></tr>`+
+    `<tr><td>Frecuencia mínima</td><td>${R.fmin.toFixed(3)} Hz</td><td>${R.nFtmin}–${R.nFtmax} Hz</td><td>${badge(R.stFMin)}</td></tr>`;
+
+  document.getElementById('r-thd').innerHTML=
+    `<tr><td>THD-V máx</td><td>${R.thdv.toFixed(2)}%</td><td>≤ ${R.nThdv}%</td><td>${badge(R.stThdv)}</td></tr>`+
+    `<tr><td>TDD corriente</td><td>${R.thdi.toFixed(2)}%</td><td>≤ ${R.nThdi}%</td><td>${badge(R.stThdi)}</td></tr>`+
+    `<tr><td>Icc / IL</td><td>${R.iccIl}</td><td>100–1000 (cat.)</td><td>—</td></tr>`;
+
+  document.getElementById('r-fp').innerHTML=
+    `<tr><td>FP promedio</td><td>${R.fp.toFixed(1)}%</td><td>≥ ${R.nFp}%</td><td>${badge(R.stFP)}</td></tr>`+
+    `<tr><td>FP máximo</td><td>${R.fpmax.toFixed(1)}%</td><td>—</td><td>—</td></tr>`+
+    `<tr><td>FP mínimo</td><td>${R.fpmin.toFixed(1)}%</td><td>—</td><td>—</td></tr>`+
+    `<tr><td>Desbalance V</td><td>${R.dbv.toFixed(3)}%</td><td>≤ ${R.nDbv}%</td><td>${badge(R.stDbv)}</td></tr>`+
+    `<tr><td>Desbalance I</td><td>${R.dbi.toFixed(3)}%</td><td>≤ ${R.nDbi}%</td><td>${badge(R.stDbi)}</td></tr>`;
+
+  var normas=[
+    {n:'ANSI C84.1',items:[{l:'Tensión permanente (±'+R.nVmax+'%)',s:[R.stVA,R.stVB,R.stVC].includes('FAIL')?'FAIL':[R.stVA,R.stVB,R.stVC].includes('WARN')?'WARN':'OK'},{l:'Tensión temporal',s:R.stVMax}]},
+    {n:'IEEE 1159-2019',items:[{l:'Frecuencia permanente',s:R.stFreq},{l:'FP ≥ '+R.nFp+'% (CFE)',s:R.stFP}]},
+    {n:'IEEE 519-2022',items:[{l:'THD-V ≤ '+R.nThdv+'%',s:R.stThdv},{l:'TDD ≤ '+R.nThdi+'%',s:R.stThdi}]},
+    {n:'NOM-001 / Cód. Red',items:[{l:'Desbalance V ≤ '+R.nDbv+'%',s:R.stDbv},{l:'Desbalance I ≤ '+R.nDbi+'%',s:R.stDbi}]},
+  ];
+  document.getElementById('r-normas').innerHTML=normas.map(n=>
+    `<div class="norm-block"><div class="norm-header"><span class="norm-name">${n.n}</span></div>`+
+    `<table class="rt"><tbody>${n.items.map(it=>`<tr><td>${it.l}</td><td style="width:120px">${badge(it.s)}</td></tr>`).join('')}</tbody></table></div>`
+  ).join('');
+}
+
+function renderGraficas(){
+  var R=RES;
+  document.getElementById('graf-empty').style.display='none';
+  document.getElementById('graf-content').style.display='block';
+  document.getElementById('graf-sub').textContent=gs('f-emp')+' | '+gs('f-fecha')+' | '+gv('f-dur')+' horas de medición';
+  Object.values(CH).forEach(c=>{try{c.destroy();}catch(e){}});
+
+  var N=48;
+  var lbs=Array.from({length:N},(_,i)=>{var h=Math.floor(i/2);return h+':'+(i%2===0?'00':'30');});
+  var opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10},boxWidth:8,padding:6}}},scales:{x:{ticks:{font:{size:9},maxTicksLimit:12}},y:{ticks:{font:{size:9}}}}};
+
+  var vnom=R.vnom;
+  CH.v=new Chart(document.getElementById('ch-v'),{type:'line',data:{labels:lbs,datasets:[
+    {label:'Va',data:lbs.map((_,i)=>+(R.va+Math.sin(i*.28)*0.04+(Math.random()*.018-.009)).toFixed(3)),borderColor:'#2563c7',borderWidth:1.5,pointRadius:0,tension:.35},
+    {label:'Vb',data:lbs.map((_,i)=>+(R.vb+Math.sin(i*.28+1)*0.032+(Math.random()*.018-.009)).toFixed(3)),borderColor:'#16a34a',borderWidth:1.5,pointRadius:0,tension:.35},
+    {label:'Vc',data:lbs.map((_,i)=>+(R.vc+Math.sin(i*.28+2)*0.048+(Math.random()*.018-.009)).toFixed(3)),borderColor:'#ea580c',borderWidth:1.5,pointRadius:0,tension:.35},
+    {label:'Lím+',data:lbs.map(()=>+(vnom*(1+R.nVmax/100)).toFixed(3)),borderColor:'#ef4444',borderWidth:1,borderDash:[5,4],pointRadius:0},
+    {label:'Lím−',data:lbs.map(()=>+(vnom*(1-R.nVmax/100)).toFixed(3)),borderColor:'#ef4444',borderWidth:1,borderDash:[5,4],pointRadius:0},
+  ]},options:opts});
+
+  CH.f=new Chart(document.getElementById('ch-f'),{type:'line',data:{labels:lbs,datasets:[
+    {label:'Frecuencia',data:lbs.map(()=>+(R.freq+(Math.random()*.1-.05)).toFixed(3)),borderColor:'#7c3aed',borderWidth:1.5,pointRadius:0,tension:.35},
+    {label:'Máx',data:lbs.map(()=>R.nFmax),borderColor:'#ef4444',borderWidth:1,borderDash:[5,4],pointRadius:0},
+    {label:'Mín',data:lbs.map(()=>R.nFmin),borderColor:'#ef4444',borderWidth:1,borderDash:[5,4],pointRadius:0},
+  ]},options:opts});
+
+  CH.thd=new Chart(document.getElementById('ch-thd'),{type:'line',data:{labels:lbs,datasets:[
+    {label:'TDD',data:lbs.map((_,i)=>+(R.thdi*(i>=14&&i<=38?1:.6)+(Math.random()*1.8-0.9)).toFixed(2)),borderColor:'#dc2626',borderWidth:1.5,pointRadius:0,tension:.35,fill:true,backgroundColor:'rgba(220,38,38,.07)'},
+    {label:'Límite',data:lbs.map(()=>R.nThdi),borderColor:'#ef4444',borderWidth:1,borderDash:[5,4],pointRadius:0},
+  ]},options:opts});
+
+  CH.fp=new Chart(document.getElementById('ch-fp'),{type:'line',data:{labels:lbs,datasets:[
+    {label:'FP',data:lbs.map(()=>+(R.fp+(Math.random()*5-2.5)).toFixed(1)),borderColor:'#0891b2',borderWidth:1.5,pointRadius:0,tension:.35},
+    {label:'Mín CFE',data:lbs.map(()=>R.nFp),borderColor:'#ef4444',borderWidth:1,borderDash:[5,4],pointRadius:0},
+  ]},options:opts});
+
+  var dlbs=Array.from({length:24},(_,i)=>i+':00');
+  var kwD=dlbs.map((_,i)=>Math.round(R.kwmax*(i>=8&&i<=18?1:.52)+(Math.random()*20-10)));
+  var kvarD=dlbs.map((_,i)=>Math.round(R.kvar*(i>=8&&i<=18?1:.52)+(Math.random()*15-7)));
+  CH.dem=new Chart(document.getElementById('ch-dem'),{type:'bar',data:{labels:dlbs,datasets:[
+    {label:'kW',data:kwD,backgroundColor:'rgba(37,99,199,.75)',borderRadius:3},
+    {label:'kVAR',data:kvarD,backgroundColor:'rgba(220,38,38,.65)',borderRadius:3},
+  ]},options:{...opts,scales:{x:{ticks:{font:{size:9},maxTicksLimit:12}},y:{ticks:{font:{size:9}}}}}});
+}
+
+function calcCFE(){
+  if(!RES.fp)return;
+  var fp=RES.fp/100, fpo=gv('cfe-fpo')/100;
+  var kwh=gv('cfe-kwh'), ckvar=gv('cfe-ckvar'), ckwh=gv('cfe-ckwh');
+  var kw=kwh/720;
+  var kvarAct=Math.sqrt(kw*kw*(1/Math.pow(fp,2)-1))*720;
+  var kvarObj=Math.sqrt(kw*kw*(1/Math.pow(fpo,2)-1))*720;
+  var kvarExc=Math.max(kvarAct-kvarObj,0);
+  var pen=Math.max(Math.round(kvarExc*ckvar),fp<fpo?Math.round((fpo-fp)/fp*100*ckwh*kwh/100):0);
+  var kvarBanco=Math.round(kvarExc*1.1);
+  var costoBanco=kvarBanco*950;
+  var roi=pen>0?Math.ceil(costoBanco/pen):0;
+
+  var ok=pen===0||fp>=fpo;
+  var box=document.getElementById('cfe-box');
+  box.className='cfe-box'+(ok?' ok':'');
+  document.getElementById('cfe-amount').className='cfe-amount '+(ok?'ok':'fail');
+  document.getElementById('cfe-amount').textContent='$'+(pen).toLocaleString()+' MXN';
+  document.getElementById('cfe-title-lbl').textContent=ok?'Sin penalización — FP dentro del límite':'Penalización estimada por bajo FP';
+  document.getElementById('cfe-sub-lbl').textContent='por mes · Tarifa '+gs('f-tarifa');
+
+  document.getElementById('cfe-desglose').innerHTML=
+    `FP medido: <strong>${(fp*100).toFixed(1)}%</strong><br>`+
+    `FP objetivo CFE: <strong>${(fpo*100).toFixed(0)}%</strong><br>`+
+    `kW promedio estimado: <strong>${kw.toFixed(0)} kW</strong><br>`+
+    `kVAR actuales: <strong>${Math.round(kvarAct).toLocaleString()} kVAR</strong><br>`+
+    `kVAR objetivo: <strong>${Math.round(kvarObj).toLocaleString()} kVAR</strong><br>`+
+    `kVAR excedente: <strong>${Math.round(kvarExc).toLocaleString()} kVAR</strong><br>`+
+    `<strong style="color:${ok?'var(--verde)':'var(--rojo)'}">Penalización mensual: $${pen.toLocaleString()} MXN<br>Penalización anual: $${(pen*12).toLocaleString()} MXN</strong>`;
+
+  document.getElementById('cfe-roi').innerHTML=
+    `<tr><td>kVAR a compensar</td><td><strong>${kvarBanco.toLocaleString()} kVAR</strong></td></tr>`+
+    `<tr><td>Costo banco de capacitores</td><td><strong>$${costoBanco.toLocaleString()} MXN</strong></td></tr>`+
+    `<tr><td>Penalización mensual evitada</td><td><strong>$${pen.toLocaleString()} MXN</strong></td></tr>`+
+    `<tr><td>Período de retorno</td><td><strong>${roi} meses</strong></td></tr>`+
+    `<tr><td>Ahorro en 5 años</td><td><strong>$${(pen*60).toLocaleString()} MXN</strong></td></tr>`;
+}
+
+function renderCFE(){
+  document.getElementById('cfe-empty').style.display='none';
+  document.getElementById('cfe-content').style.display='block';
+  document.getElementById('cfe-kwh').value=RES.kwh||0;
+  calcCFE();
+}
+
+function renderMemoria(){
+  var R=RES;
+  document.getElementById('mem-empty').style.display='none';
+  document.getElementById('mem-content').style.display='block';
+  var stColor=s=>s==='OK'?'ok':s==='WARN'?'warn':s==='NA'?'dim':'fail';
+  var blocks=[
+    {t:'1. Regulación de voltaje — ANSI C84.1 / NOM-001-SEDE',lines:[
+      `<span class="key">Vnom</span> = ${R.vnom} kV | Límite permanente: ±${R.nVmax}% | Límite temporal: ±${gv('n-vtmax')}%`,
+      `dev_A = (${R.va}-${R.vnom})/${R.vnom} × 100 = <span class="${stColor(R.stVA)}">${R.devA.toFixed(3)}% → ${R.stVA}</span>`,
+      `dev_B = <span class="${stColor(R.stVB)}">${R.devB.toFixed(3)}% → ${R.stVB}</span>`,
+      `dev_C = <span class="${stColor(R.stVC)}">${R.devC.toFixed(3)}% → ${R.stVC}</span>`,
+      `dev_max reg = <span class="${stColor(R.stVMax)}">${R.devMax.toFixed(3)}% → ${R.stVMax}</span>`,
+      `dev_min reg = <span class="${stColor(R.stVMin)}">${R.devMin.toFixed(3)}% → ${R.stVMin}</span>`,
+    ]},
+    {t:'2. Desbalance de voltaje — NOM-001-SEDE',lines:[
+      `Desbalance V máx medido = ${R.dbv.toFixed(3)}%  |  Límite = ${R.nDbv}% → <span class="${stColor(R.stDbv)}">${R.stDbv}</span>`,
+      `Desbalance I máx medido = ${R.dbi.toFixed(3)}%  |  Límite = ${R.nDbi}% → <span class="${stColor(R.stDbi)}">${R.stDbi}</span>`,
+    ]},
+    {t:'3. Frecuencia — IEEE 1159-2019',lines:[
+      `f_prom = ${R.freq.toFixed(3)} Hz  | Rango permanente: ${R.nFmin}–${R.nFmax} Hz → <span class="${stColor(R.stFreq)}">${R.stFreq}</span>`,
+      `f_max  = ${R.fmax.toFixed(3)} Hz  | Rango temporal: ${R.nFtmin}–${R.nFtmax} Hz → <span class="${stColor(R.stFMax)}">${R.stFMax}</span>`,
+      `f_min  = ${R.fmin.toFixed(3)} Hz  → <span class="${stColor(R.stFMin)}">${R.stFMin}</span>`,
+    ]},
+    {t:'4. Distorsión armónica — IEEE 519-2022',lines:[
+      `Icc = ${R.icc} kA   |   IL = ${R.il} kA   |   Icc/IL = ${R.iccIl}  (categoría: 100–1000)`,
+      `THD-V máx = ${R.thdv.toFixed(2)}%  |  Límite = ${R.nThdv}% → <span class="${stColor(R.stThdv)}">${R.stThdv}</span>`,
+      `TDD máx   = ${R.thdi.toFixed(2)}%  |  Límite = ${R.nThdi}% → <span class="${stColor(R.stThdi)}">${R.stThdi}</span>`,
+    ]},
+    {t:'5. Factor de potencia — IEEE 1159 / CFE',lines:[
+      `FP promedio = ${R.fp.toFixed(2)}%  |  Mínimo CFE = ${R.nFp}% → <span class="${stColor(R.stFP)}">${R.stFP}</span>`,
+      `FP máximo = ${R.fpmax.toFixed(2)}%  |  FP mínimo = ${R.fpmin.toFixed(2)}%`,
+    ]},
+    {t:'6. Índice de cumplimiento global',lines:[
+      `Parámetros evaluados: ${R.oks+R.warns+R.fails}`,
+      `<span class="ok">CUMPLE: ${R.oks}</span>   <span class="warn">MARGINAL: ${R.warns}</span>   <span class="fail">NO CUMPLE: ${R.fails}</span>`,
+      `Índice = ${R.oks}/${R.oks+R.warns+R.fails} × 100 = <span class="${stColor(R.gst)}">${R.score}%  →  ${R.gst}</span>`,
+    ]},
+  ];
+  document.getElementById('mem-blocks').innerHTML=blocks.map(b=>
+    `<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--textMed);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${b.t}</div>`+
+    `<div class="mono">${b.lines.map(l=>`<div>${l}</div>`).join('')}</div></div>`
+  ).join('');
+}
+
+function renderReporte(){
+  var R=RES;
+  document.getElementById('rep-empty').style.display='none';
+  document.getElementById('rep-content').style.display='block';
+
+  var stColors={OK:'var(--verde)',WARN:'var(--ambar)',FAIL:'var(--rojo)'};
+  var stBg={OK:'var(--verdeClr)',WARN:'var(--ambarClr)',FAIL:'var(--rojoClr)'};
+  var stMsg={OK:'CUMPLE con todas las normas evaluadas',WARN:'Cumplimiento MARGINAL — requiere atención',FAIL:'NO CUMPLE — acción correctiva requerida'};
+
+  var recs=[];
+  if(R.stFP==='FAIL'||R.stFP==='WARN') recs.push({lv:R.stFP,n:'IEEE 1159 / CFE',t:`FP promedio ${R.fp.toFixed(1)}% por debajo del mínimo CFE ${R.nFp}%. Rehabilitar bancos de capacitores. Penalización mensual estimada en la factura CFE.`});
+  if(R.stThdi==='FAIL'||R.stThdi==='WARN') recs.push({lv:R.stThdi,n:'IEEE 519-2022',t:`TDD de corriente ${R.thdi.toFixed(1)}% supera el límite de ${R.nThdi}%. Instalar filtro activo de armónicos o revisar VFDs y rectificadores.`});
+  if(R.stThdv==='FAIL'||R.stThdv==='WARN') recs.push({lv:R.stThdv,n:'IEEE 519-2022',t:`THD de voltaje ${R.thdv.toFixed(1)}% en valores marginales respecto al límite de ${R.nThdv}%. Monitorear tendencia.`});
+  if(R.stDbv==='FAIL'||R.stDbv==='WARN') recs.push({lv:R.stDbv,n:'NOM-001-SEDE',t:`Desbalance de voltaje ${R.dbv.toFixed(2)}% supera el límite de ${R.nDbv}%. Redistribuir cargas entre fases.`});
+  if(R.stDbi==='FAIL'||R.stDbi==='WARN') recs.push({lv:R.stDbi,n:'NOM-001-SEDE',t:`Desbalance de corriente ${R.dbi.toFixed(2)}% supera el límite de ${R.nDbi}%. Redistribuir cargas.`});
+  if(R.sags>3) recs.push({lv:'WARN',n:'IEEE 1159',t:`${R.sags} sags registrados en el período. Evaluar instalación de UPS o regulador de voltaje para equipos críticos.`});
+  if(!recs.length) recs.push({lv:'OK',n:'Todas las normas',t:'Sistema dentro de parámetros aceptables en todas las normas evaluadas. Se recomienda medición periódica semestral para seguimiento de tendencias.'});
+
+  document.getElementById('rep-body').innerHTML=
+    `<div style="border:1.5px solid ${stColors[R.gst]};background:${stBg[R.gst]};border-radius:10px;padding:14px 16px;margin-bottom:14px">`+
+    `<div style="font-size:15px;font-weight:700;color:${stColors[R.gst]};margin-bottom:4px">${stMsg[R.gst]}</div>`+
+    `<div style="font-size:12px;color:${stColors[R.gst]}">Índice de cumplimiento: ${R.score}% | ${R.oks}/${R.oks+R.warns+R.fails} parámetros dentro de norma | ${gs('f-emp')} | ${gs('f-fecha')}</div></div>`+
+    `<div class="g3" style="margin-bottom:14px">`+
+    `<div class="card" style="margin:0"><div style="font-size:12px;font-weight:700;margin-bottom:4px">Voltaje</div><div style="font-size:11px;color:var(--textMed)">Desv. máx: ${Math.max(Math.abs(R.devA),Math.abs(R.devB),Math.abs(R.devC)).toFixed(2)}%</div>${badge([R.stVA,R.stVB,R.stVC].includes('FAIL')?'FAIL':[R.stVA,R.stVB,R.stVC].includes('WARN')?'WARN':'OK')}</div>`+
+    `<div class="card" style="margin:0"><div style="font-size:12px;font-weight:700;margin-bottom:4px">Armónicos</div><div style="font-size:11px;color:var(--textMed)">TDD: ${R.thdi.toFixed(1)}% | THD-V: ${R.thdv.toFixed(1)}%</div>${badge(R.stThdi==='NA'?'OK':R.stThdi)}</div>`+
+    `<div class="card" style="margin:0"><div style="font-size:12px;font-weight:700;margin-bottom:4px">Factor de potencia</div><div style="font-size:11px;color:var(--textMed)">FP: ${R.fp.toFixed(1)}% promedio</div>${badge(R.stFP)}</div></div>`+
+    `<div class="card"><div class="card-title">Hallazgos y recomendaciones priorizadas</div>`+
+    recs.map((r,i)=>`<div class="rec-row"><div class="rec-num ${r.lv==='FAIL'?'rn-fail':r.lv==='WARN'?'rn-warn':'rn-ok'}">${i+1}</div><div class="rec-text">${r.t}<div class="rec-norm">${r.n}</div></div></div>`).join('')+
+    `</div><div style="margin-top:8px">${['ANSI C84.1','NOM-001-SEDE','IEEE 519-2022','IEEE 1159-2019','Código de Red CRE'].map(c=>`<span class="chip">${c}</span>`).join('')}</div>`;
+}
+
+function loadDemo(){
+  sv('f-emp','SESAJAL S.A. DE C.V.');sv('f-planta','Planta 2 — Guadalajara, Jalisco');
+  sv('f-vnom','23');sv('f-dem','410');sv('f-tarifa','HM');sv('f-med','RB868L');
+  sv('f-icc','5.036');sv('f-il','0.0106');sv('f-equipo','Fluke 435-II | S/N RB868L');
+  sv('f-tec','Smart Energy Consulting Corp');
+  document.getElementById('f-fecha').value='2023-10-15';
+  sv('m-va','22.98');sv('m-vb','22.93');sv('m-vc','23.04');
+  sv('m-vmax','23.49');sv('m-vmin','22.60');
+  sv('m-freq','59.99');sv('m-fmax','60.04');sv('m-fmin','59.90');
+  sv('m-fp','88.0');sv('m-fpmax','99.0');sv('m-fpmin','78.0');
+  sv('m-thdv','3.2');sv('m-thdi','6.55');
+  sv('m-dbv','0.23');sv('m-dbi','3.20');
+  sv('m-sags','2');sv('m-swells','0');
+  sv('m-kwmax','390');sv('m-kwh','280800');sv('m-kvar','168');
+  autoLimits(); runAnalysis();
+}
+
+function exportReport(){
+  var R=RES;
+  if(!R.gst){alert('Ejecuta el análisis primero.');return;}
+  // Build a simple printable HTML report
+  var html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte Calidad de Energía — ${gs('f-emp')}</title><style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:2cm;} h1{font-size:18px;color:#1a4b8c;} h2{font-size:14px;color:#2563c7;border-bottom:2px solid #2563c7;padding-bottom:4px;} table{width:100%;border-collapse:collapse;margin:10px 0;} th{background:#1a4b8c;color:#fff;padding:6px 8px;text-align:left;font-size:11px;} td{padding:6px 8px;border-bottom:1px solid #e2e8f0;} .ok{background:#dcfce7;color:#166534;font-weight:700;} .fail{background:#fee2e2;color:#991b1b;font-weight:700;} .warn{background:#fef3c7;color:#92400e;font-weight:700;} .na{background:#f1f5f9;color:#475569;}
+    .header{background:#1a4b8c;color:#fff;padding:20px;margin-bottom:20px;} .kpi-row{display:flex;gap:10px;margin:10px 0;} .kpi{flex:1;border:1px solid #e2e8f0;border-radius:6px;padding:10px;text-align:center;} .kpi-val{font-size:22px;font-weight:700;} .kpi-lbl{font-size:10px;color:#666;margin-top:2px;}
+  </style></head><body>
+  <div class="header"><h1 style="color:#fff;margin:0">REPORTE DE CALIDAD DE ENERGÍA</h1><div style="margin-top:6px;opacity:.8">${gs('f-emp')} — ${gs('f-planta')} | ${gs('f-fecha')} | ${gs('f-tec')}</div></div>
+  <h2>1. Índice de cumplimiento global</h2>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val">${R.score}%</div><div class="kpi-lbl">Cumplimiento</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:${R.fails>0?'#991b1b':'#166534'}">${R.fails}</div><div class="kpi-lbl">Fuera de norma</div></div>
+    <div class="kpi"><div class="kpi-val">${R.fp.toFixed(1)}%</div><div class="kpi-lbl">FP promedio</div></div>
+    <div class="kpi"><div class="kpi-val">${R.dbv.toFixed(2)}%</div><div class="kpi-lbl">Desbalance V</div></div>
+  </div>
+  <h2>2. Evaluación por parámetro</h2>
+  <table><tr><th>Parámetro</th><th>Medido</th><th>Límite</th><th>Estado</th></tr>
+    <tr><td>Va promedio</td><td>${R.va.toFixed(3)} kV</td><td>±${R.nVmax}%</td><td class="${R.stVA.toLowerCase()}">${R.stVA}</td></tr>
+    <tr><td>Vb promedio</td><td>${R.vb.toFixed(3)} kV</td><td>±${R.nVmax}%</td><td class="${R.stVB.toLowerCase()}">${R.stVB}</td></tr>
+    <tr><td>Vc promedio</td><td>${R.vc.toFixed(3)} kV</td><td>±${R.nVmax}%</td><td class="${R.stVC.toLowerCase()}">${R.stVC}</td></tr>
+    <tr><td>Frecuencia promedio</td><td>${R.freq.toFixed(3)} Hz</td><td>${R.nFmin}–${R.nFmax} Hz</td><td class="${R.stFreq.toLowerCase()}">${R.stFreq}</td></tr>
+    <tr><td>Factor de potencia</td><td>${R.fp.toFixed(1)}%</td><td>≥ ${R.nFp}%</td><td class="${R.stFP.toLowerCase()}">${R.stFP}</td></tr>
+    <tr><td>THD-V máx</td><td>${R.thdv.toFixed(2)}%</td><td>≤ ${R.nThdv}%</td><td class="${R.stThdv.toLowerCase()}">${R.stThdv}</td></tr>
+    <tr><td>TDD corriente</td><td>${R.thdi.toFixed(2)}%</td><td>≤ ${R.nThdi}%</td><td class="${R.stThdi==='NA'?'na':R.stThdi.toLowerCase()}">${R.stThdi}</td></tr>
+    <tr><td>Desbalance voltaje</td><td>${R.dbv.toFixed(3)}%</td><td>≤ ${R.nDbv}%</td><td class="${R.stDbv.toLowerCase()}">${R.stDbv}</td></tr>
+    <tr><td>Desbalance corriente</td><td>${R.dbi.toFixed(3)}%</td><td>≤ ${R.nDbi}%</td><td class="${R.stDbi.toLowerCase()}">${R.stDbi}</td></tr>
+  </table>
+  <h2>3. Normas evaluadas</h2><p>ANSI C84.1 | NOM-001-SEDE | IEEE 519-2022 | IEEE 1159-2019 | Código de Red CRE Res/151/2016</p>
+  <h2>4. Elaboró</h2><p>${gs('f-tec')} | Smart Energy Consulting Corp | Florida · México</p>
+  </body></html>`;
+  var b=new Blob([html],{type:'text/html'});
+  var u=URL.createObjectURL(b);
+  var a=document.createElement('a');
+  a.href=u;a.download='Reporte_CalidadEnergia_'+(gs('f-emp').replace(/\s/g,'_')||'cliente')+'.html';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
+}
+
+function printReport(){window.print();}
+
+// Init
+document.getElementById('f-fecha').value=new Date().toISOString().slice(0,10);
+autoLimits();
+</script>
+</body>
+</html>
